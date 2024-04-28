@@ -1,0 +1,244 @@
+import java.net.*;
+import java.io.*;
+import java.util.*;
+// Server program which first obtains the IPs of all other ports through the coordinator,
+// Then creates threads to handle communications between each of the servers.
+// Then manages the delivery of each message.
+
+
+// args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
+public class Server {
+	// List of IP addresses for each Server instance.
+	private String[] ips = new String[7];
+	// The Server's current message timestamp.
+	private int[] timestamp = {0, 0, 0, 0, 0, 0, 0};
+	// The status of each channel to other Servers. The boolean corresponding to the Server's ID is irrelevant.
+	private boolean[] closedChannels = new boolean[7];
+	// Each of the objects stored in the repository.
+	private String[] objects = new String[7];
+	// Buffer for undelivered messages.
+	private ArrayList<Message> buffer = new ArrayList<Message>();
+	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
+	private ServerThread[] threads = new ServerThread[7];
+
+	// You can safely ignore these; this is for synchronization purposes.
+	int numDelivered = 0;
+	int numPrepared = 0;
+	int num;
+	int token = 0;
+	public static void main(String[] args) {
+		// Terminates if there is an incorrect number of arguments.
+		if (args.length != 2) {
+			System.out.println("Incorrect number of arguments!");
+			System.exit(0);
+		}
+		new Server(args);
+	}
+
+	public Server(String[] args) {
+		num = Integer.parseInt(args[1]);
+		System.out.println("Server " + args[1] + " started.");
+		int port = 8000 + Integer.parseInt(args[1]);
+		try {
+			// Attempts to connect to coordinator
+			System.out.println("Attempting to connect to " + args[0] + " on port " + port);
+			Socket server = new Socket(InetAddress.getByName(args[0]), port);
+			
+			System.out.println("Just connected to " + server.getRemoteSocketAddress());
+			
+			// Create output stream to coordinator and send coordinator the server IP address
+			OutputStream outToCoordinator = server.getOutputStream();
+			DataOutputStream out = new DataOutputStream(outToCoordinator);
+			
+			String address = InetAddress.getLocalHost().getHostAddress().trim();
+			out.writeUTF(address);
+			
+			// Create input stream from coordinator and listens until the IP addresses are all obtained
+			InputStream inFromCoordinator = server.getInputStream();
+			DataInputStream in = new DataInputStream(inFromCoordinator);
+
+			assembleIps(in.readUTF());
+			System.out.println("Ready to establish connections!");
+			
+			// Create each thread.		
+			// The port for each pair will be 7000 + 100 * host + server.
+
+			// Each server will make a host thread for any server with an ID number greater than it.
+			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
+			for (int i = 0; i < 7; i++) {
+				if (Integer.parseInt(args[1]) < i) {
+					threads[i] = new ServerThreadHost(Integer.parseInt(args[1]), i, 7000 + 100 * Integer.parseInt(args[1]) + i, this);
+				} else if (Integer.parseInt(args[1]) > i) {
+					threads[i] = new ServerThreadClient(Integer.parseInt(args[1]), i, 7000 + 100 * i + Integer.parseInt(args[1]), this, ips[i]);
+				}
+			}
+
+			System.out.println("Threads created! Waiting to start...");
+			System.out.println("Starting threads...");
+
+			// Disconnect from coordinator; it is no longer needed.
+			server.close();
+			
+			// Wait for all threads to connect, then start.
+			for(ServerThread thread : threads) {
+				thread.start();
+			}
+			
+			// Wait for channels between all threads to be created before proceeding.
+			while(numPrepared < 3) {
+				System.out.print("");
+			}
+				
+			syncPrint("Ready to send and receive messages.");
+
+			// HOW TO SEND A MESSAGE TO ANOTHER SERVER:
+			// 1. Create a message object.
+			// 2. Call the send method corresponding to the thread you want to send to.
+				// i.e. sendMessage(new Message(timestamp, 0, "Hello, world!"), 1);
+			// 3. The other Server will then respond with either "Received" or "Failed"
+			//    If "Received" the method will return true. If "Failed" it will return false.
+
+			// TODO: Implement way for user to manually disable channels. I can handle this later this week if it’s a problem for you.
+		} catch (UnknownHostException u) {
+			System.out.println(u);
+			System.exit(1);
+		} catch (IOException i) {
+			System.out.println(i);
+			System.exit(1);
+		}
+
+	}
+	
+	// Sends a message to the chosen recipient, selected by ID. If the recipient is set to the current Server's ID, it returns false.
+	// Otherwise, returns the recipient's response after sending the message.
+	private boolean sendMessage(Message message, int recipient) throws IOException {
+		if(recipient == num) {
+			return false;
+		}
+		return threads[recipient].sendMessage(message);
+	}
+
+	// Returns the object requested by a ServerToClientThread.
+	// If the item does not exist yet, returns "Error".
+	public String readObject(int object) {
+		if(objects[object] != "") {
+			return objects[object];
+		}
+		else return "Error";
+	}
+
+	// Writes to an object according to the ServerToClientThread which requested it.
+	// Takes the source of the request (the ID of the requesting client) for usage in synchronizing when two clients attempt to write at the same time.
+	public boolean writeObject(int object, String value, int source) {
+		// TODO: Implement sychronization between replicas upon receiving a new write.
+		objects[object] = value;
+		return true;
+	}
+
+	// Synchronized method to print to console. I'm not enirely sure this method is necessary, but I've been using it since Project 1.
+	private synchronized void syncPrint(String s) {
+		System.out.println(s);
+	}
+
+	// Synchronized method to edit or retrieve current timestamp.
+	private synchronized int[] accessTimestamp(int index) {
+		if(index != -1) {
+			timestamp[index]++;
+		}
+		return timestamp;
+	}
+	
+	// Method for threads to indicate they are ready.
+	public synchronized void markReady() {
+		numPrepared ++;
+	}
+
+	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
+	public synchronized void receiveMessage(String incoming) { 
+			Message newMessage = Message.fromString(incoming);
+			attemptDeliver(newMessage, false);
+	}
+	
+	// Delivers a message if the current time is causally greater than the timestamp
+	// of the message. Otherwise, adds it to the buffer.
+	// message is the message to be delivered; false indicates whether the message was retrived from the buffer.
+	// If fromBuffer, attemptDeliver will not call clearBuffer to prevent recursively calling it.
+	private synchronized int[] attemptDeliver(Message message, boolean fromBuffer) {
+		if (message == null) {
+			accessTimestamp(num);
+			return accessTimestamp(-1);
+		}
+		int newTimestamp = compareTimestamp(message.timestamp);
+		if (newTimestamp != -1) {
+			int[] newStamp = accessTimestamp(newTimestamp);
+			syncPrint("Message " + message.text + " was delivered. New timestamp is " + Arrays.toString(newStamp));
+			numDelivered ++;
+			if (!fromBuffer) {
+				accessBuffer(message, true);
+			}
+			return accessTimestamp(-1);
+		} else {
+			syncPrint("Message \"" + message.text + "\" was placed into the buffer. Current timestamp is " + Arrays.toString(accessTimestamp(-1)));
+			accessBuffer(message, false);
+		}
+		return null;
+	}
+
+	// Iterates through the buffer and attempts to deliver each message currently pending delivery. 
+	// If clear is false, the program will attempt to clear the buffer. Otherwise, it will add an item to the buffer.
+	private synchronized void accessBuffer(Message newMessage, boolean clear) {
+		if (!clear) {
+			buffer.add(newMessage);
+			return;
+		}
+		//System.out.println("Clearing buffer");
+		for (int i = buffer.size() - 1; i >= 0; i--) {
+			if(attemptDeliver(buffer.remove(i), true) != null) {
+				i = buffer.size() - 1;
+			}
+		}
+		//System.out.println("Done clearning buffer");
+	}
+
+	// Compares the timestamp of the given message to the current server's timestamp.
+	// Returns true if the client timestamp is causally earlier than the current timestamp.
+	// Delivers a timestamp if a single item in the new timestamp 
+	// is exactly one greater than the current timestamp.
+	private synchronized int compareTimestamp(int[] newMessage) {
+		int numLarger = 0;
+		int largerIndex = 0;
+		int[] currentTimestamp = accessTimestamp(-1);
+		for (int i = 0; i < 4; i++) {
+			if (newMessage[i] > currentTimestamp[i]) {
+				if (newMessage[i] == currentTimestamp[i] + 1) {	
+					numLarger ++;
+					largerIndex = i;
+				} else {
+					return -1;
+				}
+			}
+		}
+		
+		if (numLarger == 1) {
+			return largerIndex;
+		}
+		
+		return -1;
+
+	}
+
+	// Populates the ips array using the list of addresses received from the coordinator.
+	private void assembleIps(String input) {
+		Scanner string = new Scanner(input);
+		for(int i = 0; i < 7; i++) {
+			ips[i] = string.next();
+		}
+		
+		System.out.println("IP addresses: ");
+		for(int i = 0; i < 7; i++) {
+			System.out.println("Server " + i + ": " + ips[i]);
+		}
+		string.close();
+	}
+
+}
