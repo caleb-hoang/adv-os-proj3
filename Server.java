@@ -98,7 +98,7 @@ public class Server {
 			// 3. The other Server will then respond with either "Received" or "Failed"
 			//    If "Received" the method will return true. If "Failed" it will return false.
 
-			// TODO: Implement way for user to manually disable channels. I can handle this later this week if it’s a problem for you.
+			// TODO: Implement way for user to manually disable channels.
 		} catch (UnknownHostException u) {
 			System.out.println(u);
 			System.exit(1);
@@ -116,6 +116,23 @@ public class Server {
 			return false;
 		}
 		return threads[recipient].sendMessage(message);
+	}
+
+	// Receives the request from a ServerToClientThread and handles it.
+	public String getRequest(String request) {
+		Scanner req = new Scanner(request);
+		int clientID = req.nextInt();
+		int object = req.nextInt();
+		int requestType = req.nextInt();
+		if(req.hasNext()) { // Request type is a write
+			return readObject(object);
+		} else { // Request type is a write
+			if (writeObject(object, req.next(), clientID)) {
+				return "Successfully wrote!";
+			} else {
+				return "Write failed!";
+			}
+		}
 	}
 
 	// Returns the object requested by a ServerToClientThread.

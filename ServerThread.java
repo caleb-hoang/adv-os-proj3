@@ -26,10 +26,10 @@ public abstract class ServerThread extends Thread {
 		out.writeUTF(message.toString());
 		String response = in.readUTF();
 		if (response.equals("Received")) {
-			// Message was received by partner, and the channel is working properly. 
+			// TODO: Message was received by partner, and the channel is working properly. 
 			return true;
 		} else {
-			// Message was not received by partner, and the channel is not working properly.
+			// TODO: Message was not received by partner, and the channel is not working properly.
 			// You may want to add behavior here to respond to blocked channels.
 			return false;
 		}
@@ -52,6 +52,7 @@ public abstract class ServerThread extends Thread {
 				System.out.println("Token " + nextMessage + " received from server " + partner);
 				out.writeUTF("Received");
 				server.receiveMessage(nextMessage);
+				// TODO: Add behavior for when channel is closed
 			} catch (IOException e) {
 				// e.printStackTrace();
 			}
