@@ -15,7 +15,7 @@ public class Server {
 	// The status of each channel to other Servers. The boolean corresponding to the Server's ID is irrelevant.
 	private boolean[] closedChannels = new boolean[NUM_SERVERS];
 	// Each of the objects stored in the repository.
-	private String[] objects = new String[NUM_SERVERS];
+	private ArrayList<Obj> objects = new ArrayList<Obj>();
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
@@ -123,14 +123,18 @@ public class Server {
 	public String getRequest(String request) {
 		Scanner req = new Scanner(request);
 		int clientID = req.nextInt();
-		int object = req.nextInt();
 		int requestType = req.nextInt();
-		if(req.hasNext()) { // Request type is a write
-			return readObject(object);
+		Obj object = new Obj(req.next(), "");
+		if(requestType == 1) { // Request type is a read
+			req.close();
+			return readObject(object).toString();
 		} else { // Request type is a write
-			if (writeObject(object, req.next(), clientID)) {
+			object.value = req.nextLine(); // set object's value to the requested write value to be written.
+			if (writeObject(object, clientID)) {
+				req.close();
 				return "Successfully wrote!";
 			} else {
+				req.close();
 				return "Write failed!";
 			}
 		}
@@ -138,19 +142,28 @@ public class Server {
 
 	// Returns the object requested by a ServerToClientThread.
 	// If the item does not exist yet, returns "Error".
-	public String readObject(int object) {
-		if(objects[object] != "") {
-			return objects[object];
+	public Object readObject(Obj object) {
+		if(!objects.contains(object)) {
+			return objects.get(objects.indexOf(object));
 		}
 		else return "Error";
 	}
 
 	// Writes to an object according to the ServerToClientThread which requested it.
 	// Takes the source of the request (the ID of the requesting client) for usage in synchronizing when two clients attempt to write at the same time.
-	public boolean writeObject(int object, String value, int source) {
+	public boolean writeObject(Obj newObject, int source) {
 		// TODO: Implement sychronization between replicas upon receiving a new write.
-		objects[object] = value;
-		return true;
+		if(objects.contains(newObject)) {
+			objects.get(objects.indexOf(newObject)).value = newObject.value;
+			return true;
+		} else {
+			objects.add(newObject);
+			return true;
+		}
+	}
+
+	public boolean channelIsClosed(int channel) {
+		return closedChannels[channel];
 	}
 
 	// Synchronized method to print to console. I'm not enirely sure this method is necessary, but I've been using it since Project 1.

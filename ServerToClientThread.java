@@ -11,6 +11,8 @@ public class ServerToClientThread {
 	private Socket server;
     private Server parent;
 
+    // For port, use 7000 + the Server's id
+
     public ServerToClientThread(int portNum, int threadNum, Server s) throws IOException {
 		port = portNum;
 		num = threadNum;

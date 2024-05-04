@@ -26,7 +26,7 @@ public abstract class ServerThread extends Thread {
 	public boolean sendMessage(Message message) throws IOException {
 		out.writeUTF(message.toString());
 		String response = in.readUTF();
-		if (response.equals("Received")) {
+		if (response.equals("Delivered")) {
 			// TODO: Message was received by partner, and the channel is working properly.
 			System.out.println("Message received");
 			return true;
@@ -51,10 +51,14 @@ public abstract class ServerThread extends Thread {
 			try {
 				System.out.println("listening for messages from " + partner);
 				String nextMessage = in.readUTF();
-				System.out.println("Token " + nextMessage + " received from server " + partner);
-				out.writeUTF("Received");
-				server.receiveMessage(nextMessage);
-				// TODO: Add behavior for when channel is closed
+				if (!server.channelIsClosed(partner)) {
+					System.out.println("Message " + nextMessage + " received from server " + partner);
+					out.writeUTF("Delivered");
+					server.receiveMessage(nextMessage);
+				} else {
+					System.out.println("Message " + nextMessage + " blocked from server " + partner);
+					out.writeUTF("Failed");
+				}
 			} catch (IOException e) {
 				// e.printStackTrace();
 			}

@@ -1,6 +1,5 @@
 import java.io.*;
 
-
 // Creates and manages threads to manage the collection of Client ip addresses. 
 public class Coordinator {
 	public static final int NUM_SERVERS = 2;	// -> 7
@@ -27,7 +26,7 @@ public class Coordinator {
 			for (int i = 0; i < NUM_SERVERS; i++) {
 				threads[i].start();
 			}
-
+			writeIPsToFile();
 		} catch (IOException e) {
 			System.out.println("IO Exception detected!");
 			System.out.println(e);
@@ -54,5 +53,20 @@ public class Coordinator {
 	// Getter method for IP address array.
 	public synchronized static String[] getIPs() {
 		return ips;
+	}
+
+	// Writes the IP addresses for each
+	public static void writeIPsToFile() {
+		try {
+			FileWriter addresses = new FileWriter("ips.txt");
+			for (String ip : ips) {
+				addresses.write(ip + "\n");
+			}
+			addresses.close();
+		} catch (FileNotFoundException e) {
+			System.out.println("File not found!");
+		} catch (IOException i) {
+			System.out.println("Write failed.");
+		}
 	}
 }
