@@ -1,6 +1,9 @@
 // Message class. Contains a timestamp represented as an int[] and a message represented as a String.
 import java.util.Scanner;
+
 public class Message {
+
+    public static int NUM_SERVERS = 2; // ->7
     public int[] timestamp;
     public String text;
     public int object;
@@ -20,9 +23,9 @@ public class Message {
     }
 
     public static Message fromString(String input) {
-        int[] timestamp = new int[7];
+        int[] timestamp = new int[NUM_SERVERS];
         Scanner string = new Scanner(input);
-        for(int i = 0; i < 7; i++) {
+        for(int i = 0; i < NUM_SERVERS; i++) {
             timestamp[i] = string.nextInt();
         }
         int object = string.nextInt();

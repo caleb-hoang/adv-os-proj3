@@ -3,8 +3,11 @@ import java.io.*;
 
 // Creates and manages threads to manage the collection of Client ip addresses. 
 public class Coordinator {
-	private static String[] ips = new String[4];
-	private static int numWaiting = 4;
+	public static final int NUM_SERVERS = 2;	// -> 7
+	public static final int NUM_CLIENTS = 1;	// -> 5
+
+	private static String[] ips = new String[NUM_SERVERS];
+	private static int numWaiting = NUM_SERVERS;
 	private static CoordinatorThread[] threads;
 	private static Boolean ready = false;
 	private static int numReady = 0;
@@ -12,14 +15,16 @@ public class Coordinator {
 	public static void main(String[] args) {
 		try {
 			System.out.println("Creating threads");
-			threads = new CoordinatorThread[4];
+			threads = new CoordinatorThread[NUM_SERVERS];
+
 			ManagerThread manager = new ManagerThread();
 			manager.start();
-			for (int i = 0; i < 4; i++) {
+
+			for (int i = 0; i < NUM_SERVERS; i++) {
 				threads[i] = new CoordinatorThread(8000 + i, i, manager);
 			}
-	
-			for (int i = 0; i < 4; i++) {
+
+			for (int i = 0; i < NUM_SERVERS; i++) {
 				threads[i].start();
 			}
 

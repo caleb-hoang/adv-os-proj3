@@ -10,7 +10,6 @@ public class ServerThreadClient extends ServerThread {
 	// private DataInputStream in
 	// private Server server
 	// private boolean exit
-	//
 	private String ip;
 	
 	public ServerThreadClient(int number, int host, int portNum, Server pServer, String address) {
@@ -30,15 +29,19 @@ public class ServerThreadClient extends ServerThread {
 					socket = new Socket(InetAddress.getByName(ip), port);
 					break;
 				} catch (ConnectException c) {
+					c.printStackTrace();
 				}
 			}  
 			System.out.println("Thread " + num + " connected to Server " + partner);
+
 			in = new DataInputStream(socket.getInputStream());
 			out = new DataOutputStream(socket.getOutputStream());
 			out.writeUTF("");
 			in.readUTF();
+
 			server.markReady();
 		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 	}

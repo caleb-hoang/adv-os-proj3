@@ -5,27 +5,28 @@ import java.util.*;
 // Then creates threads to handle communications between each of the servers.
 // Then manages the delivery of each message.
 
-
 // args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
 public class Server {
+	int NUM_SERVERS = 2; // -> 7
 	// List of IP addresses for each Server instance.
-	private String[] ips = new String[7];
+	private String[] ips = new String[NUM_SERVERS];
 	// The Server's current message timestamp.
 	private int[] timestamp = {0, 0, 0, 0, 0, 0, 0};
 	// The status of each channel to other Servers. The boolean corresponding to the Server's ID is irrelevant.
-	private boolean[] closedChannels = new boolean[7];
+	private boolean[] closedChannels = new boolean[NUM_SERVERS];
 	// Each of the objects stored in the repository.
-	private String[] objects = new String[7];
+	private String[] objects = new String[NUM_SERVERS];
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
-	private ServerThread[] threads = new ServerThread[7];
+	private ServerThread[] threads = new ServerThread[NUM_SERVERS];
 
 	// You can safely ignore these; this is for synchronization purposes.
 	int numDelivered = 0;
 	int numPrepared = 0;
 	int num;
 	int token = 0;
+
 	public static void main(String[] args) {
 		// Terminates if there is an incorrect number of arguments.
 		if (args.length != 2) {
@@ -37,8 +38,8 @@ public class Server {
 
 	public Server(String[] args) {
 		num = Integer.parseInt(args[1]);
-		System.out.println("Server " + args[1] + " started.");
-		int port = 8000 + Integer.parseInt(args[1]);
+		System.out.println("Server " + num + " started.");
+		int port = 8000 + num;
 		try {
 			// Attempts to connect to coordinator
 			System.out.println("Attempting to connect to " + args[0] + " on port " + port);
@@ -65,11 +66,11 @@ public class Server {
 
 			// Each server will make a host thread for any server with an ID number greater than it.
 			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
-			for (int i = 0; i < 7; i++) {
-				if (Integer.parseInt(args[1]) < i) {
-					threads[i] = new ServerThreadHost(Integer.parseInt(args[1]), i, 7000 + 100 * Integer.parseInt(args[1]) + i, this);
-				} else if (Integer.parseInt(args[1]) > i) {
-					threads[i] = new ServerThreadClient(Integer.parseInt(args[1]), i, 7000 + 100 * i + Integer.parseInt(args[1]), this, ips[i]);
+			for (int i = 0; i < NUM_SERVERS; i++) {
+				if (num < i) {
+					threads[i] = new ServerThreadHost(num, i, 7000 + 100 * num + i, this);
+				} else if (num > i) {
+					threads[i] = new ServerThreadClient(num, i, 7000 + 100 * i + num, this, ips[i]);
 				}
 			}
 
@@ -85,7 +86,7 @@ public class Server {
 			}
 			
 			// Wait for channels between all threads to be created before proceeding.
-			while(numPrepared < 3) {
+			while(numPrepared < NUM_SERVERS) {
 				System.out.print("");
 			}
 				
@@ -247,15 +248,14 @@ public class Server {
 	// Populates the ips array using the list of addresses received from the coordinator.
 	private void assembleIps(String input) {
 		Scanner string = new Scanner(input);
-		for(int i = 0; i < 7; i++) {
+		for(int i = 0; i < NUM_SERVERS; i++) {
 			ips[i] = string.next();
 		}
 		
 		System.out.println("IP addresses: ");
-		for(int i = 0; i < 7; i++) {
+		for(int i = 0; i < NUM_SERVERS; i++) {
 			System.out.println("Server " + i + ": " + ips[i]);
 		}
 		string.close();
 	}
-
 }

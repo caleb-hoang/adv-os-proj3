@@ -26,12 +26,15 @@ public class ServerThreadHost extends ServerThread {
 			serverSocket = new ServerSocket(port);
 			socket = serverSocket.accept();
 			System.out.println("Thread " + num + " connected to Server " + partner);
+
 			in = new DataInputStream(socket.getInputStream());
 			out = new DataOutputStream(socket.getOutputStream());
 			out.writeUTF("");
 			in.readUTF();
+
 			server.markReady();
 		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 }

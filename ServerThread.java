@@ -4,6 +4,7 @@ import java.util.*;
 
 // Thread which accepts communication from other Servers through their ServerThreads.
 public abstract class ServerThread extends Thread {
+
 	protected int num;
 	protected int partner;
 	protected int port;
@@ -26,15 +27,16 @@ public abstract class ServerThread extends Thread {
 		out.writeUTF(message.toString());
 		String response = in.readUTF();
 		if (response.equals("Received")) {
-			// TODO: Message was received by partner, and the channel is working properly. 
+			// TODO: Message was received by partner, and the channel is working properly.
+			System.out.println("Message received");
 			return true;
 		} else {
 			// TODO: Message was not received by partner, and the channel is not working properly.
 			// You may want to add behavior here to respond to blocked channels.
+			System.out.println("Message not received");
 			return false;
 		}
 	}
-	
 
 	// Indicate that the thread will not be sending a message this round.
 	public void pass() { try {
