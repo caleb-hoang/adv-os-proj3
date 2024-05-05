@@ -39,11 +39,13 @@ public abstract class ServerThread extends Thread {
 	}
 
 	// Indicate that the thread will not be sending a message this round.
-	public void pass() { try {
-		out.writeUTF("pass");
-	} catch(IOException e) {
-	
-	}}
+	public void pass() { 
+		try {
+			out.writeUTF("pass");
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	// Listens for message from the partner, then prints to console when received.
 	public void receiveMessages() {
@@ -71,6 +73,7 @@ public abstract class ServerThread extends Thread {
 		try {
 			socket.close();
 		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 }

@@ -26,7 +26,7 @@ public class Coordinator {
 			for (int i = 0; i < NUM_SERVERS; i++) {
 				threads[i].start();
 			}
-			writeIPsToFile();
+			// writeIPsToFile();
 		} catch (IOException e) {
 			System.out.println("IO Exception detected!");
 			System.out.println(e);
@@ -47,6 +47,7 @@ public class Coordinator {
 	public synchronized static int logIP(String ip, int index) {
 		ips[index] = ip;
 		numWaiting --;
+		if(numWaiting == 0) writeIPsToFile();
 		return numWaiting;
 	}
 	

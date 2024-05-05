@@ -11,19 +11,23 @@ import java.util.Random;
 
 public class Client {
 
-        public static int NUM_SERVERS = 7;
+    public static int NUM_SERVERS = 2;
+
     public static void main(String[]args) throws IOException {
         if (args.length > 4 || args.length < 2) {
             System.out.println("Wrong number of args!");
             System.exit(0);
         }
+
         int clientNum = Integer.parseInt(args[0]);
         String objectName = args[1];
         int requestType = Integer.parseInt(args[2]);
+
         String objectValue = "";
         if (args.length == 4) {
             objectValue = args[3];
         }
+
         String[] ips = getIPs();
         int[] servers = relevantServers(objectName);
 
@@ -33,8 +37,6 @@ public class Client {
             Obj newObject = new Obj(objectName, objectValue);
             write(clientNum, servers, ips, newObject);
         }
-
-        
     }
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
@@ -54,6 +56,7 @@ public class Client {
         
         String result = in.readUTF();
         server.close();
+
         return result;
     }
 
@@ -102,9 +105,11 @@ public class Client {
     public static int[] relevantServers(String objectName) {
         int[] objectServers = new int[3];
         int hashCode = objectName.hashCode();
+
         objectServers[0] = (hashCode) % 7;
         objectServers[1] = (hashCode + 2) % 7;
         objectServers[1] = (hashCode + 4) % 7;
+
         return objectServers;
     }
 }
