@@ -42,20 +42,21 @@ public class Client {
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
         Random rand = new Random();
-        int chosenServer = servers[rand.nextInt(NUM_REPLICATION)];
-        int port = 7000 + chosenServer;
+        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICATION)];
+        int port = 7000 + 100*chosenServerIndex + chosenServerIndex;
 
-        System.out.println("Attempting to connect to server " + chosenServer + " on port " + port);
-		Socket server = new Socket(InetAddress.getByName(ips[chosenServer]), port);
+        System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
+		Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
 		System.out.println("Just connected to " + server.getRemoteSocketAddress());
 
 		// Create output stream to server and send server the message
 		OutputStream outToServer = server.getOutputStream();
 		DataOutputStream out = new DataOutputStream(outToServer);
+
         InputStream inFromServer = server.getInputStream();
         DataInputStream in = new DataInputStream(inFromServer);
         out.writeUTF(clientNum + " " + 1 + " " + objectName);
-        
+
         String result = in.readUTF();
         server.close();
 
@@ -65,10 +66,11 @@ public class Client {
     public static String write(int clientNum, int[] servers, String[] ips, Obj object) throws IOException {
         int numSuccesses = 0;
         for (int i = 0; i < servers.length; i++) {
-            int currentServer = servers[i];
-            int port = 7000 + currentServer;
-            System.out.println("Attempting to connect to server " + currentServer +" on port" + port);
-	    	Socket server = new Socket(InetAddress.getByName(ips[currentServer]), port);
+            int chosenServerIndex = servers[i];
+            int port = 7000 + 100*chosenServerIndex + chosenServerIndex;
+
+            System.out.println("Attempting to connect to server " + chosenServerIndex +" on port " + port);
+	    	Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
     		System.out.println("Just connected to " + server.getRemoteSocketAddress());
 
 	    	// Create output stream to server and send server the message
@@ -81,9 +83,9 @@ public class Client {
             String result = in.readUTF();
             if (result.equals("Successfully wrote!")) {
                 numSuccesses ++;
-                System.out.println("Send to server " + currentServer + " succeeded");
+                System.out.println("Send to server " + chosenServerIndex + " succeeded");
             } else {
-                System.out.println("Send to server " + currentServer + " failed");
+                System.out.println("Send to server " + chosenServerIndex + " failed");
             }
             server.close();
         }

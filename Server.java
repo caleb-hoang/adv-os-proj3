@@ -19,7 +19,7 @@ public class Server {
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
-	private ServerThread[] threads = new ServerThread[NUM_SERVERS];
+	private ServerThread[] threads = new ServerThread[2*NUM_SERVERS];
 
 	// You can safely ignore these; this is for synchronization purposes.
 	int numDelivered = 0;
@@ -60,14 +60,14 @@ public class Server {
 
 			assembleIps(in.readUTF());
 			System.out.println("Ready to establish connections!");
-			
+
 			// Create each thread.		
 			// The port for each pair will be 7000 + 100 * host + server.
 
 			// Each server will make a host thread for any server with an ID number greater than it.
 			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
 			for (int i = 0; i < NUM_SERVERS; i++) {
-				if (num < i) {
+				if (num <= i) {
 					threads[i] = new ServerThreadHost(num, i, 7000 + 100 * num + i, this);
 				} else if (num > i) {
 					threads[i] = new ServerThreadClient(num, i, 7000 + 100 * i + num, this, ips[i]);
