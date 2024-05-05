@@ -82,7 +82,7 @@ public class Server {
 			
 			// Wait for all threads to connect, then start.
 			for(ServerThread thread : threads) {
-				thread.start();
+				if(thread != null)	thread.start();
 			}
 			
 			// Wait for channels between all threads to be created before proceeding.
