@@ -12,6 +12,7 @@ import java.util.Random;
 public class Client {
 
     public static int NUM_SERVERS = 2;
+    public static int NUM_REPLICATION = 3;
 
     public static void main(String[]args) throws IOException {
         if (args.length > 4 || args.length < 2) {
@@ -41,9 +42,10 @@ public class Client {
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
         Random rand = new Random();
-        int chosenServer = servers[rand.nextInt(3)];
+        int chosenServer = servers[rand.nextInt(NUM_REPLICATION)];
         int port = 7000 + chosenServer;
-        System.out.println("Attempting to connect to server " + chosenServer +" on port" + port);
+
+        System.out.println("Attempting to connect to server " + chosenServer + " on port " + port);
 		Socket server = new Socket(InetAddress.getByName(ips[chosenServer]), port);
 		System.out.println("Just connected to " + server.getRemoteSocketAddress());
 
@@ -93,22 +95,32 @@ public class Client {
     }
 
     public static String[] getIPs() {
-        Scanner file = new Scanner("ips.txt");
         String[] servers = new String[NUM_SERVERS];
-        for(int i = 0; i < NUM_SERVERS; i++) {
-            servers[i] = file.next();
+
+        try {
+            File file = new File("ips.txt");
+            Scanner input = new Scanner(file);
+
+            for(int i = 0; i < NUM_SERVERS; i++) {
+                if(input.hasNextLine())  servers[i] = input.nextLine().toString();
+            }
+
+            input.close();
+        } catch (FileNotFoundException f) {
+            f.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        file.close();
         return servers;
     }
 
     public static int[] relevantServers(String objectName) {
-        int[] objectServers = new int[3];
+        int[] objectServers = new int[NUM_REPLICATION];
         int hashCode = objectName.hashCode();
 
-        objectServers[0] = (hashCode) % 7;
-        objectServers[1] = (hashCode + 2) % 7;
-        objectServers[1] = (hashCode + 4) % 7;
+        objectServers[0] = (hashCode) % NUM_SERVERS;
+        objectServers[1] = (hashCode + 2) % NUM_SERVERS;
+        objectServers[2] = (hashCode + 4) % NUM_SERVERS;
 
         return objectServers;
     }
