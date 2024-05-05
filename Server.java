@@ -92,12 +92,40 @@ public class Server {
 				
 			syncPrint("Ready to send and receive messages.");
 
+			// Create thread to communicate with clients.
+			ServerToClientThread scThread = new ServerToClientThread(7000 + num, num, this);
+
 			// HOW TO SEND A MESSAGE TO ANOTHER SERVER:
 			// 1. Create a message object.
 			// 2. Call the send method corresponding to the thread you want to send to.
 				// i.e. sendMessage(new Message(timestamp, 0, "Hello, world!"), 1);
 			// 3. The other Server will then respond with either "Received" or "Failed"
 			//    If "Received" the method will return true. If "Failed" it will return false.
+
+			boolean active = true;
+			Scanner kb = new Scanner(System.in);
+			while (active) {
+				System.out.println("Input the channel which you with to flip (0-7) - input \"exit\" to exit.");
+				String nextInput = kb.nextLine();
+				if (nextInput.equals("exit")) {
+					System.out.println("Exiting!");
+					active = false;
+				} else {
+					int input = Integer.parseInt(nextInput);
+					if (input < 0 || input > 6) {
+						System.out.println("Input out of bounds!");
+					} else {
+						String s = "Channel to Server " + input + " is now ";
+						if (closedChannels[input]) {
+							s = s + "open!";
+						} else {
+							s = s + "closed!";
+						}
+						closedChannels[input] = !closedChannels[input];
+					}
+				}
+			}
+			kb.close();
 
 			// TODO: Implement way for user to manually disable channels.
 		} catch (UnknownHostException u) {
