@@ -8,6 +8,7 @@ import java.util.*;
 // args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
 public class Server {
 	public final int NUM_SERVERS = 5; // -> 7
+    public final int NUM_REPLICAS = 3;
     public final int BASE_PORT = 7000;
 	public final int COORDINATOR_BASE_PORT = 8000;
 	public final int MINOR_GROUP_SIZE = (int) Math.floor(NUM_SERVERS/2);
@@ -399,5 +400,46 @@ public class Server {
 		*/
 
 		//TODO: synchronize groups
+
+		int missingReplicaId = getMissingReplicaId();
+
+		//no missing replica or it is in minority replica group 
+		if(missingReplicaId < 0)	{
+			System.out.println("No synchronized needed!");
+			return;
+		}
+
+		//send out sync data to missingReplicaId from serverId;
+		//based on the list of messages stored on server
+	}
+
+	public int getMissingReplicaId() {
+
+		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
+		int[] group = inMinorGroup ? minorGroup:majorGroup;
+
+		int numReplicasInGroup = 1;	//self
+		int missingReplicaId = -1;
+		boolean secondary = false, tertiary = false;
+
+		//check if it has >= 2 replicas in itself
+		if(Arrays.stream(group).anyMatch(x -> x == (serverID+2)%NUM_SERVERS))	{
+			secondary = true;
+			numReplicasInGroup++;
+		}
+		if(Arrays.stream(group).anyMatch(x -> x == (serverID+4)%NUM_SERVERS))	{
+			tertiary = true;
+			numReplicasInGroup++;
+		}
+
+		if(numReplicasInGroup == NUM_REPLICAS)	return missingReplicaId;	//all replicas on same group
+
+		if(numReplicasInGroup == 1)	return missingReplicaId;	//majority group will send updates
+
+		//numReplicasInGroup = 2
+		if(!secondary && tertiary)	missingReplicaId = (serverID+2)%NUM_SERVERS;
+		if(secondary && !tertiary)	missingReplicaId = (serverID+4)%NUM_SERVERS;
+
+		return missingReplicaId;
 	}
 }
