@@ -26,7 +26,7 @@ public class ServerThreadClient extends ServerThread {
 
 			//to allow all serverhost threads to be ready
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(3000);
 			} catch (InterruptedException ie) {
 				System.out.println("Can't sleep a thread!");
 			}
@@ -47,7 +47,7 @@ public class ServerThreadClient extends ServerThread {
 			out.writeUTF("");
 			in.readUTF();
 
-			server.markReady();
+			server.markReady(num);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

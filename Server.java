@@ -10,13 +10,16 @@ public class Server {
 	public final int NUM_SERVERS = 5; // -> 7
     public final int BASE_PORT = 7000;
 	public final int COORDINATOR_BASE_PORT = 8000;
+	public final int MINOR_GROUP_SIZE = (int) Math.floor(NUM_SERVERS/2);
+	public int[] minorGroup = new int[MINOR_GROUP_SIZE];	//to remove
+	public int[] majorGroup = new int[MINOR_GROUP_SIZE+1];	//to remove
 
 	// List of IP addresses for each Server instance.
 	private String[] ips = new String[NUM_SERVERS];
 	// The Server's current message timestamp.
 	private int[] timestamp = {0, 0, 0, 0, 0, 0, 0};
 	// The status of each channel to other Servers. The boolean corresponding to the Server's ID is irrelevant.
-	private boolean[] closedChannels = new boolean[NUM_SERVERS];
+	private boolean[] connectedChannels = new boolean[NUM_SERVERS];
 	// Each of the objects stored in the repository.
 	private ArrayList<Obj> objects = new ArrayList<Obj>();
 	// Buffer for undelivered messages.
@@ -92,7 +95,7 @@ public class Server {
 			while(numPrepared < NUM_SERVERS) {
 				System.out.print("");
 			}
-				
+
 			syncPrint("Ready to send and receive messages.");
 
 			// Create thread to communicate with clients.
@@ -123,12 +126,13 @@ public class Server {
 					}
 					else {
 						String s = "Channel to Server " + input + " is now ";
-						if (closedChannels[input]) {
+						if (!connectedChannels[input]) {
 							s = s + "open!";
+							unmarkReady(input);
 						} else {
 							s = s + "closed!";
+							markReady(input);
 						}
-						closedChannels[input] = !closedChannels[input];
 					}
 				}
 			}
@@ -203,7 +207,7 @@ public class Server {
 	}
 
 	public boolean isChannelClosed(int channel) {
-		return closedChannels[channel];
+		return !connectedChannels[channel];
 	}
 
 	// Synchronized method to print to console. I'm not enirely sure this method is necessary, but I've been using it since Project 1.
@@ -218,10 +222,17 @@ public class Server {
 		}
 		return timestamp;
 	}
+
+	public synchronized void unmarkReady(int connectedServerID) {
+		numPrepared--;
+		connectedChannels[connectedServerID] = false;
+		System.out.println("Disconnected from server " + connectedServerID);
+	}
 	
 	// Method for threads to indicate they are ready.
-	public synchronized void markReady() {
+	public synchronized void markReady(int connectedServerID) {
 		numPrepared ++;
+		connectedChannels[connectedServerID] = true;
 
 		/*
 		//if all connections are made
@@ -325,5 +336,68 @@ public class Server {
 			System.out.println("Server " + i + ": " + ips[i]);
 		}
 		string.close();
+	}
+
+	public synchronized void createPartition() {
+
+		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
+		for (int i = 0; i < NUM_SERVERS; i++) {
+			if((inMinorGroup && i < MINOR_GROUP_SIZE) || (!inMinorGroup && i>=MINOR_GROUP_SIZE)) continue;
+
+			connectedChannels[i] = false;
+		}
+
+		/*
+		//set serverIndices to groups
+		for (int i = 0; i < NUM_SERVERS; i++) {
+			if(i < MINOR_GROUP_SIZE)
+				minorGroup[i] = i;
+			else
+				majorGroup[i-MINOR_GROUP_SIZE] = i;
+		}
+
+		//break connections with other group
+		System.out.println();
+		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
+		if(inMinorGroup)	{
+			for (int serverId : majorGroup) {
+				threads[serverId].stopSig();
+			}
+		}
+		else {
+			for (int serverId : minorGroup) {
+				threads[serverId].stopSig();
+			}
+		}
+		System.out.println();
+		*/
+
+		// reconstructPartition();
+	}
+
+	public synchronized void reconstructPartition() {
+		//connect back connections
+		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
+		for (int i = 0; i < NUM_SERVERS; i++) {
+			if((inMinorGroup && i < MINOR_GROUP_SIZE) || (!inMinorGroup && i>=MINOR_GROUP_SIZE)) continue;
+
+			connectedChannels[i] = true;
+		}
+
+		/*
+		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
+		for (int i = 0; i < NUM_SERVERS; i++) {
+
+			if((inMinorGroup && i < MINOR_GROUP_SIZE) || (!inMinorGroup && i>=MINOR_GROUP_SIZE)) continue;
+
+			if (serverID <= i) {
+				threads[i] = new ServerThreadHost(i, i, BASE_PORT + 100 * serverID + i, this);
+			} else if (serverID > i) {
+				threads[i] = new ServerThreadClient(i, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
+			}
+		}
+		*/
+
+		//TODO: synchronize groups
 	}
 }

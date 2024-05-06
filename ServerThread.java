@@ -69,7 +69,9 @@ public abstract class ServerThread extends Thread {
 	
 	// Signal the socket to close.
 	public void stopSig() {
+		System.out.println("Disconnected from server " + partner);
 		exit = true;
+		server.unmarkReady(num);
 		try {
 			socket.close();
 		} catch (IOException e) {

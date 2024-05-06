@@ -23,14 +23,14 @@ public class ServerThreadHost extends ServerThread {
 	public void run() {
 		try {
 			//self
+			System.out.println("Thread " + num + " waiting for response from Server " + partner + " on port " + port);
+
 			if(server.serverID == partner)	{
-				System.out.println("Thread " + num + " waiting for response from Server " + partner + " on port " + port);
 				System.out.println("Thread " + num + " connected to Server " + partner);
-				server.markReady();
+				server.markReady(num);
 				return;
 			}
 
-			System.out.println("Thread " + num + " waiting for response from Server " + partner + " on port " + port);
 			serverSocket = new ServerSocket(port);
 			socket = serverSocket.accept();
 			System.out.println("Thread " + num + " connected to Server " + partner);
@@ -40,7 +40,7 @@ public class ServerThreadHost extends ServerThread {
 			out.writeUTF("");
 			in.readUTF();
 
-			server.markReady();
+			server.markReady(num);
 			receiveMessages();
 		} catch (IOException e) {
 			e.printStackTrace();
