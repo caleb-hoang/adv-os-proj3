@@ -31,7 +31,9 @@ public class ServerToClientThread {
 
                 String message = in.readUTF();
                 out = new DataOutputStream(server.getOutputStream());
-                out.writeUTF(parent.getRequest(message)); // Print response from server.
+                String response = parent.getRequest(message);
+                System.out.println(response);
+                out.writeUTF(response); // Print response from server.
             } catch (SocketTimeoutException s) {
                 System.out.println("Socket Timeout on thread " + num);
             } catch (IOException e) {

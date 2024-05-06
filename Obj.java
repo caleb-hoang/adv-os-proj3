@@ -1,3 +1,4 @@
+import java.util.Scanner;
 public class Obj {
     public String name;
     public String value;
@@ -13,5 +14,10 @@ public class Obj {
 
     public String toString() {
         return name + " " + value;
+    }
+
+    public static Obj fromString(String input) {
+        Scanner object = new Scanner(input);
+        return new Obj(object.next(), object.next());
     }
 }
