@@ -51,7 +51,7 @@ public abstract class ServerThread extends Thread {
 	public void receiveMessages() {
 		while(!exit) {
 			try {
-				System.out.println("listening for messages from " + partner);
+				System.out.println("listening for messages from server " + partner);
 				String nextMessage = in.readUTF();
 				if (!server.isChannelClosed(partner)) {
 					System.out.println("Message " + nextMessage + " received from server " + partner);

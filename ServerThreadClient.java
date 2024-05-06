@@ -23,6 +23,14 @@ public class ServerThreadClient extends ServerThread {
 	
 	public void run() {
 		try {
+
+			//to allow all serverhost threads to be ready
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException ie) {
+				System.out.println("Can't sleep a thread!");
+			}
+
 			System.out.println("Thread " + num + " attempting to connect to " + ip + " on port " + port);
 			while(true) {
 				try {
@@ -31,7 +39,7 @@ public class ServerThreadClient extends ServerThread {
 				} catch (ConnectException c) {
 					c.printStackTrace();
 				}
-			}  
+			}
 			System.out.println("Thread " + num + " connected to Server " + partner);
 
 			in = new DataInputStream(socket.getInputStream());

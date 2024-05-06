@@ -22,7 +22,7 @@ public class Server {
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
-	private ServerThread[] threads = new ServerThread[2*NUM_SERVERS];
+	private ServerThread[] threads = new ServerThread[NUM_SERVERS];
 
 	// You can safely ignore these; this is for synchronization purposes.
 	int numDelivered = 0;
@@ -71,9 +71,9 @@ public class Server {
 			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
 			for (int i = 0; i < NUM_SERVERS; i++) {
 				if (serverID <= i) {
-					threads[i] = new ServerThreadHost(serverID, i, BASE_PORT + 100 * serverID + i, this);
+					threads[i] = new ServerThreadHost(i, i, BASE_PORT + 100 * serverID + i, this);
 				} else if (serverID > i) {
-					threads[i] = new ServerThreadClient(serverID, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
+					threads[i] = new ServerThreadClient(i, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
 				}
 			}
 
@@ -222,6 +222,21 @@ public class Server {
 	// Method for threads to indicate they are ready.
 	public synchronized void markReady() {
 		numPrepared ++;
+
+		/*
+		//if all connections are made
+		if(numPrepared == NUM_SERVERS) {
+			//send a message to the succeeding server
+			int toServer = (serverID + 1) % NUM_SERVERS;
+			Message message = new Message(timestamp, 1, "test message "+serverID);
+
+			try {
+				sendMessage(message, toServer);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		*/
 	}
 
 	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
