@@ -11,8 +11,10 @@ import java.util.Random;
 
 public class Client {
 
-    public static int NUM_SERVERS = 2;
-    public static int NUM_REPLICATION = 3;
+    public static final int NUM_SERVERS = 5;
+    public static final int NUM_REPLICAS = 3;
+    public static final int BASE_PORT = 7000;
+    public static final String IP_FILE_NAME = "ips.txt";
 
     public static void main(String[]args) throws IOException {
         if (args.length > 4 || args.length < 2) {
@@ -43,8 +45,8 @@ public class Client {
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
         Random rand = new Random();
-        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICATION)];
-        int port = 7000 + 100*chosenServerIndex + chosenServerIndex;
+        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICAS)];
+        int port = BASE_PORT + 100*chosenServerIndex + chosenServerIndex;
 
         System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
 		Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
@@ -68,7 +70,7 @@ public class Client {
         int numSuccesses = 0;
         for (int i = 0; i < servers.length; i++) {
             int chosenServerIndex = servers[i];
-            int port = 7000 + 100 * chosenServerIndex + chosenServerIndex;
+            int port = BASE_PORT + 100 * chosenServerIndex + chosenServerIndex;
 
             System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
 	    	Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
@@ -101,7 +103,7 @@ public class Client {
         String[] servers = new String[NUM_SERVERS];
 
         try {
-            File file = new File("ips.txt");
+            File file = new File(IP_FILE_NAME);
             Scanner input = new Scanner(file);
 
             for(int i = 0; i < NUM_SERVERS; i++) {
@@ -118,7 +120,7 @@ public class Client {
     }
 
     public static int[] relevantServers(String objectName) {
-        int[] objectServers = new int[NUM_REPLICATION];
+        int[] objectServers = new int[NUM_REPLICAS];
         int hashCode = objectName.hashCode();
 
         objectServers[0] = (hashCode) % NUM_SERVERS;

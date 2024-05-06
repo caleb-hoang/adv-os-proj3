@@ -11,8 +11,6 @@ public class ServerToClientThread {
 	private Socket server;
     private Server parent;
 
-    // For port, use 7000 + the Server's id
-
     public ServerToClientThread(int portNum, int threadNum, Server s) throws IOException {
 		port = portNum;
 		num = threadNum;
@@ -31,16 +29,16 @@ public class ServerToClientThread {
 
                 String message = in.readUTF();
                 out = new DataOutputStream(server.getOutputStream());
+
                 String response = parent.getRequest(message);
                 System.out.println("Attempting to respond with: " + response);
                 out.writeUTF(response); // Print response from server.
             } catch (SocketTimeoutException s) {
                 System.out.println("Socket Timeout on thread " + num);
             } catch (IOException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         }
-}
-
+    }
 
 }

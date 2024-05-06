@@ -7,7 +7,10 @@ import java.util.*;
 
 // args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
 public class Server {
-	int NUM_SERVERS = 2; // -> 7
+	public final int NUM_SERVERS = 5; // -> 7
+    public final int BASE_PORT = 7000;
+	public final int COORDINATOR_BASE_PORT = 8000;
+
 	// List of IP addresses for each Server instance.
 	private String[] ips = new String[NUM_SERVERS];
 	// The Server's current message timestamp.
@@ -24,7 +27,7 @@ public class Server {
 	// You can safely ignore these; this is for synchronization purposes.
 	int numDelivered = 0;
 	int numPrepared = 0;
-	int num;
+	int serverID;
 	int token = 0;
 
 	public static void main(String[] args) {
@@ -37,9 +40,9 @@ public class Server {
 	}
 
 	public Server(String[] args) {
-		num = Integer.parseInt(args[1]);
-		System.out.println("Server " + num + " started.");
-		int port = 8000 + num;
+		serverID = Integer.parseInt(args[1]);
+		System.out.println("Server " + serverID + " started.");
+		int port = COORDINATOR_BASE_PORT + serverID;
 		try {
 			// Attempts to connect to coordinator
 			System.out.println("Attempting to connect to " + args[0] + " on port " + port);
@@ -67,10 +70,10 @@ public class Server {
 			// Each server will make a host thread for any server with an ID number greater than it.
 			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
 			for (int i = 0; i < NUM_SERVERS; i++) {
-				if (num <= i) {
-					threads[i] = new ServerThreadHost(num, i, 7000 + 100 * num + i, this);
-				} else if (num > i) {
-					threads[i] = new ServerThreadClient(num, i, 7000 + 100 * i + num, this, ips[i]);
+				if (serverID <= i) {
+					threads[i] = new ServerThreadHost(serverID, i, BASE_PORT + 100 * serverID + i, this);
+				} else if (serverID > i) {
+					threads[i] = new ServerThreadClient(serverID, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
 				}
 			}
 
@@ -93,7 +96,7 @@ public class Server {
 			syncPrint("Ready to send and receive messages.");
 
 			// Create thread to communicate with clients.
-			ServerToClientThread scThread = new ServerToClientThread(7000 + num, num, this);
+			ServerToClientThread scThread = new ServerToClientThread(BASE_PORT + serverID, serverID, this);
 
 			// HOW TO SEND A MESSAGE TO ANOTHER SERVER:
 			// 1. Create a message object.
@@ -105,16 +108,20 @@ public class Server {
 			boolean active = true;
 			Scanner kb = new Scanner(System.in);
 			while (active) {
-				System.out.println("Input the channel which you with to flip (0-7) - input \"exit\" to exit.");
+				System.out.println("Input the channel which you with to flip (0-6) - input \"exit\" to exit.");
 				String nextInput = kb.nextLine();
 				if (nextInput.equals("exit")) {
 					System.out.println("Exiting!");
 					active = false;
 				} else {
 					int input = Integer.parseInt(nextInput);
-					if (input < 0 || input > 6) {
+					if (input < 0 || input >= NUM_SERVERS) {
 						System.out.println("Input out of bounds!");
-					} else {
+					} 
+					else if(input == serverID) {
+						System.out.println("Cannot modify connection with self!");
+					}
+					else {
 						String s = "Channel to Server " + input + " is now ";
 						if (closedChannels[input]) {
 							s = s + "open!";
@@ -140,11 +147,11 @@ public class Server {
 	
 	// Sends a message to the chosen recipient, selected by ID. If the recipient is set to the current Server's ID, it returns false.
 	// Otherwise, returns the recipient's response after sending the message.
-	private boolean sendMessage(Message message, int recipient) throws IOException {
-		if(recipient == num) {
+	private boolean sendMessage(Message message, int recipientServerIndex) throws IOException {
+		if(recipientServerIndex == serverID) {
 			return false;
 		}
-		return threads[recipient].sendMessage(message);
+		return threads[recipientServerIndex].sendMessage(message);
 	}
 
 	// Receives the request from a ServerToClientThread and handles it.
@@ -195,7 +202,7 @@ public class Server {
 		}
 	}
 
-	public boolean channelIsClosed(int channel) {
+	public boolean isChannelClosed(int channel) {
 		return closedChannels[channel];
 	}
 
@@ -219,8 +226,8 @@ public class Server {
 
 	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
 	public synchronized void receiveMessage(String incoming) { 
-			Message newMessage = Message.fromString(incoming);
-			attemptDeliver(newMessage, false);
+		Message newMessage = Message.fromString(incoming);
+		attemptDeliver(newMessage, false);
 	}
 	
 	// Delivers a message if the current time is causally greater than the timestamp
@@ -229,7 +236,7 @@ public class Server {
 	// If fromBuffer, attemptDeliver will not call clearBuffer to prevent recursively calling it.
 	private synchronized int[] attemptDeliver(Message message, boolean fromBuffer) {
 		if (message == null) {
-			accessTimestamp(num);
+			accessTimestamp(serverID);
 			return accessTimestamp(-1);
 		}
 		int newTimestamp = compareTimestamp(message.timestamp);

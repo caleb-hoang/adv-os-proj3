@@ -2,8 +2,11 @@ import java.io.*;
 
 // Creates and manages threads to manage the collection of Client ip addresses. 
 public class Coordinator {
-	public static final int NUM_SERVERS = 2;	// -> 7
+	//default IP = 10.176.69.41 //dc10
+	public static final int NUM_SERVERS = 5;	// -> 7
 	public static final int NUM_CLIENTS = 1;	// -> 5
+	public static final int COORDINATOR_BASE_PORT = 8000;
+	public static final String IP_FILE_NAME = "ips.txt";
 
 	private static String[] ips = new String[NUM_SERVERS];
 	private static int numWaiting = NUM_SERVERS;
@@ -20,7 +23,7 @@ public class Coordinator {
 			manager.start();
 
 			for (int i = 0; i < NUM_SERVERS; i++) {
-				threads[i] = new CoordinatorThread(8000 + i, i, manager);
+				threads[i] = new CoordinatorThread(COORDINATOR_BASE_PORT + i, i, manager);
 			}
 
 			for (int i = 0; i < NUM_SERVERS; i++) {
@@ -59,7 +62,7 @@ public class Coordinator {
 	// Writes the IP addresses for each
 	public static void writeIPsToFile() {
 		try {
-			FileWriter addresses = new FileWriter("ips.txt");
+			FileWriter addresses = new FileWriter(IP_FILE_NAME);
 			for (String ip : ips) {
 				addresses.write(ip + "\n");
 			}

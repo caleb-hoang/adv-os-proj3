@@ -53,7 +53,7 @@ public abstract class ServerThread extends Thread {
 			try {
 				System.out.println("listening for messages from " + partner);
 				String nextMessage = in.readUTF();
-				if (!server.channelIsClosed(partner)) {
+				if (!server.isChannelClosed(partner)) {
 					System.out.println("Message " + nextMessage + " received from server " + partner);
 					out.writeUTF("Delivered");
 					server.receiveMessage(nextMessage);
