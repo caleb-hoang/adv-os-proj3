@@ -155,7 +155,12 @@ public class Server {
 		Obj object = new Obj(req.next(), "");
 		if(requestType == 1) { // Request type is a read
 			req.close();
-			return readObject(object).toString();
+			Obj pulledObj = readObject(object);
+			if (pulledObj == null) {
+				return "Error!";
+			} else {
+				return pulledObj.toString();
+			}
 		} else { // Request type is a write
 			object.value = req.nextLine(); // set object's value to the requested write value to be written.
 			if (writeObject(object, clientID)) {
@@ -169,12 +174,12 @@ public class Server {
 	}
 
 	// Returns the object requested by a ServerToClientThread.
-	// If the item does not exist yet, returns "Error".
-	public Object readObject(Obj object) {
-		if(!objects.contains(object)) {
+	// If the item does not exist yet, returns null.
+	public Obj readObject(Obj object) {
+		if(objects.contains(object)) {
 			return objects.get(objects.indexOf(object));
 		}
-		else return "Error";
+		else return null;
 	}
 
 	// Writes to an object according to the ServerToClientThread which requested it.

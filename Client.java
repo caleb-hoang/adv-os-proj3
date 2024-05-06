@@ -33,7 +33,8 @@ public class Client {
         int[] servers = relevantServers(objectName);
 
         if (requestType == 1) { // If reading
-            read(clientNum, servers, ips, objectName);
+            String result = read(clientNum, servers, ips, objectName);
+            System.out.println("Result of read: " + result);
         } else { // If writing
             Obj newObject = new Obj(objectName, objectValue);
             write(clientNum, servers, ips, newObject);
