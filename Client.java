@@ -68,9 +68,9 @@ public class Client {
         int numSuccesses = 0;
         for (int i = 0; i < servers.length; i++) {
             int chosenServerIndex = servers[i];
-            int port = 7000 + 100*chosenServerIndex + chosenServerIndex;
+            int port = 7000 + 100 * chosenServerIndex + chosenServerIndex;
 
-            System.out.println("Attempting to connect to server " + chosenServerIndex +" on port " + port);
+            System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
 	    	Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
     		System.out.println("Just connected to " + server.getRemoteSocketAddress());
 

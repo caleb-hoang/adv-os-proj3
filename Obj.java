@@ -8,7 +8,12 @@ public class Obj {
         value = objValue;
     }
 
-    public boolean equals(Obj object) {
+    @Override
+    public boolean equals(Object other) {
+        if (other == null) return false;
+        if (other == this) return true;
+        if (!(other instanceof Obj)) return false;
+        Obj object = (Obj) other;
         return name.equals(object.name);
     }
 

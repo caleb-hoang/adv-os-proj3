@@ -156,7 +156,7 @@ public class Server {
 		if(requestType == 1) { // Request type is a read
 			req.close();
 			Obj pulledObj = readObject(object);
-			if (pulledObj == null) {
+			if (pulledObj.equals(null)) {
 				return "Error!";
 			} else {
 				return pulledObj.toString();
