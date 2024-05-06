@@ -70,7 +70,7 @@ public class Server {
 			// Each server will make a host thread for any server with an ID number greater than it.
 			// Otherwise, it will make a server thread to connect to all servers with a higher ID.
 			for (int i = 0; i < NUM_SERVERS; i++) {
-				if (serverID <= i) {
+				if (serverID < i) {
 					threads[i] = new ServerThreadHost(serverID, i, BASE_PORT + 100 * serverID + i, this);
 				} else if (serverID > i) {
 					threads[i] = new ServerThreadClient(serverID, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
@@ -89,15 +89,15 @@ public class Server {
 			}
 			
 			// Wait for channels between all threads to be created before proceeding.
-			while(numPrepared < NUM_SERVERS) {
+			while(numPrepared < NUM_SERVERS - 1) {
 				System.out.print("");
 			}
 				
 			syncPrint("Ready to send and receive messages.");
 
 			// Create thread to communicate with clients.
-			ServerToClientThread scThread = new ServerToClientThread(BASE_PORT + serverID, serverID, this);
-
+			ServerToClientThread scThread = new ServerToClientThread(BASE_PORT + serverID * 100 + serverID, serverID, this);
+			scThread.start();
 			// HOW TO SEND A MESSAGE TO ANOTHER SERVER:
 			// 1. Create a message object.
 			// 2. Call the send method corresponding to the thread you want to send to.
@@ -163,7 +163,7 @@ public class Server {
 		if(requestType == 1) { // Request type is a read
 			req.close();
 			Obj pulledObj = readObject(object);
-			if (pulledObj.equals(null)) {
+			if (pulledObj == null) {
 				return "Error!";
 			} else {
 				return pulledObj.toString();

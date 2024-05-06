@@ -29,7 +29,7 @@ public class ServerThreadClient extends ServerThread {
 					socket = new Socket(InetAddress.getByName(ip), port);
 					break;
 				} catch (ConnectException c) {
-					c.printStackTrace();
+					//c.printStackTrace();
 				}
 			}  
 			System.out.println("Thread " + num + " connected to Server " + partner);

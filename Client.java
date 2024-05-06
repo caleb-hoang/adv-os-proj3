@@ -10,7 +10,7 @@ import java.util.Random;
 // 3: Value
 
 public class Client {
-
+	public static final Random rand = new Random();
     public static final int NUM_SERVERS = 5;
     public static final int NUM_REPLICAS = 3;
     public static final int BASE_PORT = 7000;
@@ -44,7 +44,6 @@ public class Client {
     }
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
-        Random rand = new Random();
         int chosenServerIndex = servers[rand.nextInt(NUM_REPLICAS)];
         int port = BASE_PORT + 100*chosenServerIndex + chosenServerIndex;
 
@@ -121,7 +120,7 @@ public class Client {
 
     public static int[] relevantServers(String objectName) {
         int[] objectServers = new int[NUM_REPLICAS];
-        int hashCode = objectName.hashCode();
+        int hashCode = Math.abs(objectName.hashCode());
 
         objectServers[0] = (hashCode) % NUM_SERVERS;
         objectServers[1] = (hashCode + 2) % NUM_SERVERS;
