@@ -13,17 +13,17 @@ public class Server {
 
 	// List of IP addresses for each Server instance.
 	private String[] ips = new String[NUM_SERVERS];
-	// The Server's current message timestamp.
-	private int[] timestamp = {0, 0, 0, 0, 0, 0, 0};
 	// The status of each channel to other Servers. The boolean corresponding to the Server's ID is irrelevant.
 	private boolean[] closedChannels = new boolean[NUM_SERVERS];
 	// Each of the objects stored in the repository.
 	private ArrayList<Obj> objects = new ArrayList<Obj>();
+	private int[] timestamp = new int[NUM_SERVERS];
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
 	private ServerThread[] threads = new ServerThread[2*NUM_SERVERS];
-
+	// Indicates whether a Server can be accessed via Client.
+	private boolean isOpen = true;
 	// You can safely ignore these; this is for synchronization purposes.
 	int numDelivered = 0;
 	int numPrepared = 0;
@@ -85,14 +85,16 @@ public class Server {
 			
 			// Wait for all threads to connect, then start.
 			for(ServerThread thread : threads) {
-				if(thread != null)	thread.start();
+				if(thread != null)	{
+					thread.start();
+				}
 			}
 			
 			// Wait for channels between all threads to be created before proceeding.
 			while(numPrepared < NUM_SERVERS - 1) {
 				System.out.print("");
 			}
-				
+
 			syncPrint("Ready to send and receive messages.");
 
 			// Create thread to communicate with clients.
@@ -101,18 +103,24 @@ public class Server {
 			// HOW TO SEND A MESSAGE TO ANOTHER SERVER:
 			// 1. Create a message object.
 			// 2. Call the send method corresponding to the thread you want to send to.
-				// i.e. sendMessage(new Message(timestamp, 0, "Hello, world!"), 1);
 			// 3. The other Server will then respond with either "Received" or "Failed"
 			//    If "Received" the method will return true. If "Failed" it will return false.
 
 			boolean active = true;
 			Scanner kb = new Scanner(System.in);
 			while (active) {
-				System.out.println("Input the channel which you with to flip (0-6) - input \"exit\" to exit.");
+				System.out.println("Input the channel which you with to flip (0-6) - input \"exit\" to exit. Input \"client\" to toggle openness to Clients.");
 				String nextInput = kb.nextLine();
 				if (nextInput.equals("exit")) {
 					System.out.println("Exiting!");
 					active = false;
+				} else if (nextInput.equals("client")) {
+					if (isOpen) { // toggles client communication OFF.
+						System.out.println("Turning off client input!");
+					} else {
+						System.out.println("Turning on client input!");
+					}
+					isOpen = !isOpen;
 				} else {
 					int input = Integer.parseInt(nextInput);
 					if (input < 0 || input >= NUM_SERVERS) {
@@ -128,13 +136,13 @@ public class Server {
 						} else {
 							s = s + "closed!";
 						}
+						System.out.println(s);
 						closedChannels[input] = !closedChannels[input];
 					}
 				}
 			}
 			kb.close();
 
-			// TODO: Implement way for user to manually disable channels.
 		} catch (UnknownHostException u) {
 			System.out.println(u);
 			System.exit(1);
@@ -147,11 +155,17 @@ public class Server {
 	
 	// Sends a message to the chosen recipient, selected by ID. If the recipient is set to the current Server's ID, it returns false.
 	// Otherwise, returns the recipient's response after sending the message.
-	private boolean sendMessage(Message message, int recipientServerIndex) throws IOException {
-		if(recipientServerIndex == serverID) {
+	private boolean sendMessage(Message message, int recipientServerIndex) {
+		try {
+			if(recipientServerIndex == serverID || isChannelClosed(recipientServerIndex)) {
+				System.out.println("Sending to " + recipientServerIndex + " not allowed!");
+				return false;
+			}
+			return threads[recipientServerIndex].sendMessage(message);
+		} catch (IOException e) {
+			System.out.println("IO Error when sending message!");
 			return false;
 		}
-		return threads[recipientServerIndex].sendMessage(message);
 	}
 
 	// Receives the request from a ServerToClientThread and handles it.
@@ -163,7 +177,7 @@ public class Server {
 		if(requestType == 1) { // Request type is a read
 			req.close();
 			Obj pulledObj = readObject(object);
-			if (pulledObj == null) {
+			if (pulledObj == null || pulledObj.value.equals("") || pulledObj.reserved) {
 				return "Error!";
 			} else {
 				return pulledObj.toString();
@@ -172,6 +186,7 @@ public class Server {
 			object.value = req.nextLine(); // set object's value to the requested write value to be written.
 			if (writeObject(object, clientID)) {
 				req.close();
+				System.out.println("Object written: " + object);
 				return "Successfully wrote!";
 			} else {
 				req.close();
@@ -191,32 +206,91 @@ public class Server {
 
 	// Writes to an object according to the ServerToClientThread which requested it.
 	// Takes the source of the request (the ID of the requesting client) for usage in synchronizing when two clients attempt to write at the same time.
-	public boolean writeObject(Obj newObject, int source) {
-		// TODO: Implement sychronization between replicas upon receiving a new write.
+	public synchronized boolean writeObject(Obj newObject, int source) {
 		if(objects.contains(newObject)) {
-			objects.get(objects.indexOf(newObject)).value = newObject.value;
-			return true;
+			if (broadcastWrite(newObject)) {
+				objects.get(objects.indexOf(newObject)).value = newObject.value;
+				return true;
+			} else {
+				return false;
+			}
 		} else {
 			objects.add(newObject);
-			return true;
+			newObject.reserved = true;
+			if (broadcastWrite(newObject)) {
+				newObject.reserved = false;
+				return true;
+			} else {
+				objects.remove(newObject);
+				return false;
+			}
 		}
+	}
+
+	public synchronized boolean broadcastWrite(Obj object) {
+		System.out.println("attempting to broadcast write!");
+		int serverOne = (serverID + 2) % NUM_SERVERS;
+		int serverTwo = (serverID + 4) % NUM_SERVERS; 
+		System.out.println(objects.contains(object));
+		String messageString = "writeRequest " + object.toString();
+		Message newMessage = new Message(timestamp, messageString, serverID);
+		boolean first = sendMessage(newMessage, serverOne);
+		System.out.println("Sent request to Server "+ serverOne);
+		boolean second = sendMessage(newMessage, serverTwo);
+		System.out.println("Sent request to Server "+ serverTwo);
+		if(!first && !second) {
+			// write fails automatically
+			System.out.println("Write failed!");
+			return false;
+		}
+		int numNeeded = 0;
+		if (first && second) {
+			numNeeded = 2;
+		} else {
+			numNeeded = 1;
+		}
+		System.out.println("num needed: " + numNeeded);
+		while (objects.get(objects.indexOf(object)).approved < numNeeded) {
+		}
+		object.approved = 0;
+		System.out.println("All approved!");
+		String approvedMessageString = "writeFinalize " + object.toString();
+		Message approvedNewMessage = new Message(timestamp, approvedMessageString, serverID);
+		if(first) sendMessage(approvedNewMessage, serverOne);
+		if(second) sendMessage(approvedNewMessage, serverTwo);
+		return true;
+	}
+
+	public void processWriteRequest(String messageContent, int sender) {
+		Obj object = Obj.fromString(messageContent);
+		System.out.println(messageContent);
+		String messageString = "writeApprove " + object;
+		Message newMessage = new Message(timestamp, messageString, serverID);
+		sendMessage(newMessage, sender);
+	}
+
+	public void processWriteApprove(String messageContent, int sender) {
+		Obj object = Obj.fromString(messageContent);
+		objects.get(objects.indexOf(object)).approved ++;
+		System.out.println(objects.get(objects.indexOf(object)).approved);
+	}
+
+	public void processWriteFinalize(String messageContent) {
+		Obj object = Obj.fromString(messageContent);
+		if (objects.contains(object)) {
+			objects.remove(object);	
+		}
+		objects.add(object);
+		System.out.println("Object written from other Server: " + object);
 	}
 
 	public boolean isChannelClosed(int channel) {
 		return closedChannels[channel];
 	}
 
-	// Synchronized method to print to console. I'm not enirely sure this method is necessary, but I've been using it since Project 1.
+	// Synchronized method to print to console. I'm not entirely sure this method is necessary, but I've been using it since Project 1.
 	private synchronized void syncPrint(String s) {
 		System.out.println(s);
-	}
-
-	// Synchronized method to edit or retrieve current timestamp.
-	private synchronized int[] accessTimestamp(int index) {
-		if(index != -1) {
-			timestamp[index]++;
-		}
-		return timestamp;
 	}
 	
 	// Method for threads to indicate they are ready.
@@ -225,79 +299,23 @@ public class Server {
 	}
 
 	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
-	public synchronized void receiveMessage(String incoming) { 
-		Message newMessage = Message.fromString(incoming);
-		attemptDeliver(newMessage, false);
+	public void receiveMessage(Message message) { 
+		System.out.println("New message: " + message.toString());
+		String text = message.text;
+		Scanner messageText = new Scanner(text);
+		String messageType = messageText.next();
+		String messageContent = messageText.nextLine();
+		messageText.close();
+		if (messageType.equals("writeRequest")) {
+			processWriteRequest(messageContent, message.sender);
+		} else if (messageType.equals("writeApprove")) {
+			processWriteApprove(messageContent, message.sender);
+		} else if (messageType.equals("writeDeny")) {
+			// processWriteDeny(messageContent);
+		} else if (messageType.equals("writeFinalize")) {
+			processWriteFinalize(messageContent);
+		}
 	}
-	
-	// Delivers a message if the current time is causally greater than the timestamp
-	// of the message. Otherwise, adds it to the buffer.
-	// message is the message to be delivered; false indicates whether the message was retrived from the buffer.
-	// If fromBuffer, attemptDeliver will not call clearBuffer to prevent recursively calling it.
-	private synchronized int[] attemptDeliver(Message message, boolean fromBuffer) {
-		if (message == null) {
-			accessTimestamp(serverID);
-			return accessTimestamp(-1);
-		}
-		int newTimestamp = compareTimestamp(message.timestamp);
-		if (newTimestamp != -1) {
-			int[] newStamp = accessTimestamp(newTimestamp);
-			syncPrint("Message " + message.text + " was delivered. New timestamp is " + Arrays.toString(newStamp));
-			numDelivered ++;
-			if (!fromBuffer) {
-				accessBuffer(message, true);
-			}
-			return accessTimestamp(-1);
-		} else {
-			syncPrint("Message \"" + message.text + "\" was placed into the buffer. Current timestamp is " + Arrays.toString(accessTimestamp(-1)));
-			accessBuffer(message, false);
-		}
-		return null;
-	}
-
-	// Iterates through the buffer and attempts to deliver each message currently pending delivery. 
-	// If clear is false, the program will attempt to clear the buffer. Otherwise, it will add an item to the buffer.
-	private synchronized void accessBuffer(Message newMessage, boolean clear) {
-		if (!clear) {
-			buffer.add(newMessage);
-			return;
-		}
-		//System.out.println("Clearing buffer");
-		for (int i = buffer.size() - 1; i >= 0; i--) {
-			if(attemptDeliver(buffer.remove(i), true) != null) {
-				i = buffer.size() - 1;
-			}
-		}
-		//System.out.println("Done clearning buffer");
-	}
-
-	// Compares the timestamp of the given message to the current server's timestamp.
-	// Returns true if the client timestamp is causally earlier than the current timestamp.
-	// Delivers a timestamp if a single item in the new timestamp 
-	// is exactly one greater than the current timestamp.
-	private synchronized int compareTimestamp(int[] newMessage) {
-		int numLarger = 0;
-		int largerIndex = 0;
-		int[] currentTimestamp = accessTimestamp(-1);
-		for (int i = 0; i < 4; i++) {
-			if (newMessage[i] > currentTimestamp[i]) {
-				if (newMessage[i] == currentTimestamp[i] + 1) {	
-					numLarger ++;
-					largerIndex = i;
-				} else {
-					return -1;
-				}
-			}
-		}
-		
-		if (numLarger == 1) {
-			return largerIndex;
-		}
-		
-		return -1;
-
-	}
-
 	// Populates the ips array using the list of addresses received from the coordinator.
 	private void assembleIps(String input) {
 		Scanner string = new Scanner(input);

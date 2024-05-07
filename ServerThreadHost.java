@@ -31,8 +31,8 @@ public class ServerThreadHost extends ServerThread {
 			out = new DataOutputStream(socket.getOutputStream());
 			out.writeUTF("");
 			in.readUTF();
-
 			server.markReady();
+			receiveMessages();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

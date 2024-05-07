@@ -66,36 +66,32 @@ public class Client {
     }
 
     public static String write(int clientNum, int[] servers, String[] ips, Obj object) throws IOException {
-        int numSuccesses = 0;
-        for (int i = 0; i < servers.length; i++) {
-            int chosenServerIndex = servers[i];
+        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICAS)];
+        boolean isSent = false;
+        int numTried = 0;
+    	// Create output stream to server and send server the message
+        while(!isSent && numTried < 3) {
+            numTried ++;
             int port = BASE_PORT + 100 * chosenServerIndex + chosenServerIndex;
-
             System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
-	    	Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
-    		System.out.println("Just connected to " + server.getRemoteSocketAddress());
-
-	    	// Create output stream to server and send server the message
-	    	OutputStream outToServer = server.getOutputStream();
-	    	DataOutputStream out = new DataOutputStream(outToServer);
+	        Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
+    	    System.out.println("Just connected to " + server.getRemoteSocketAddress());
+            OutputStream outToServer = server.getOutputStream();
+	        DataOutputStream out = new DataOutputStream(outToServer);
             InputStream inFromServer = server.getInputStream();
             DataInputStream in = new DataInputStream(inFromServer);
             out.writeUTF(clientNum + " " + 0 + " " + object.name + " " + object.value);
-        
             String result = in.readUTF();
-            if (result.equals("Successfully wrote!")) {
-                numSuccesses ++;
-                System.out.println("Send to server " + chosenServerIndex + " succeeded");
-            } else {
-                System.out.println("Send to server " + chosenServerIndex + " failed");
+            server.close();
+            in.close();
+            out.close();
+            if (result.equals("Successfully wrote!")) {  
+                return("Send to server " + chosenServerIndex + " succeeded");
             }
             server.close();
+            chosenServerIndex = (chosenServerIndex + 2) % NUM_SERVERS;
         }
-        if (numSuccesses >= 2) {
-            return "Write successful!";
-        } else {
-            return "Write failed!";
-        }
+         return("Send failed!");
     }
 
     public static String[] getIPs() {
