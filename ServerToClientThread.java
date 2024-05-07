@@ -1,7 +1,7 @@
 import java.net.*;
 import java.io.*;
 
-public class ServerToClientThread {
+public class ServerToClientThread extends Thread {
 
     private int port;
 	private int num;
@@ -31,7 +31,7 @@ public class ServerToClientThread {
                 out = new DataOutputStream(server.getOutputStream());
 
                 String response = parent.getRequest(message);
-                System.out.println("Attempting to respond with: " + response);
+                System.out.println("Attempting to respond");
                 out.writeUTF(response); // Print response from server.
             } catch (SocketTimeoutException s) {
                 System.out.println("Socket Timeout on thread " + num);

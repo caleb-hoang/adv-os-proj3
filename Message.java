@@ -6,12 +6,18 @@ public class Message {
     public static int NUM_SERVERS = 5; // ->7
     public int[] timestamp;
     public String text;
-    public int object;
+    public int sender;
+    public static void main(String[] args) {
+        int[] messages = {1, 2, 3, 4, 5};
+        Message newMessage = new Message(messages, "text", 0);
+        String s = newMessage.toString();
+        System.out.println(s);
+    }
 
-    public Message(int[] timestamp, int object, String message) {
+    public Message(int[] timestamp, String message, int serverID) {
         this.timestamp = timestamp;
         this.text = message;
-        this.object = object;
+        sender = serverID;
     }
 
     public String toString() {
@@ -19,21 +25,22 @@ public class Message {
         for(int i = 0; i < timestamp.length; i++) {
 			output = output + timestamp[i] + " ";
 		}
+        output = output + sender + " ";
         return output + text;
     }
 
     public static Message fromString(String input) {
+        //System.out.println("Converting string to message!");
         int[] timestamp = new int[NUM_SERVERS];
         Scanner string = new Scanner(input);
 
         for(int i = 0; i < NUM_SERVERS; i++) {
             timestamp[i] = string.nextInt();
         }
-
-        int object = string.nextInt();
+        int sender = string.nextInt();
         String text = string.nextLine();
         string.close();
 
-        return new Message(timestamp, object, text);
+        return new Message(timestamp, text, sender);
     }
 }
