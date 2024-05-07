@@ -311,21 +311,6 @@ public class Server {
 	public synchronized void markReady(int connectedServerID) {
 		numPrepared ++;
 		connectedChannels[connectedServerID] = true;
-
-		/*
-		//if all connections are made
-		if(numPrepared == NUM_SERVERS) {
-			//send a message to the succeeding server
-			int toServer = (serverID + 1) % NUM_SERVERS;
-			Message message = new Message(timestamp, 1, "test message "+serverID);
-
-			try {
-				sendMessage(message, toServer);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		*/
 	}
 
 	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
@@ -369,31 +354,6 @@ public class Server {
 			connectedChannels[i] = false;
 		}
 
-		/*
-		//set serverIndices to groups
-		for (int i = 0; i < NUM_SERVERS; i++) {
-			if(i < MINOR_GROUP_SIZE)
-				minorGroup[i] = i;
-			else
-				majorGroup[i-MINOR_GROUP_SIZE] = i;
-		}
-
-		//break connections with other group
-		System.out.println();
-		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
-		if(inMinorGroup)	{
-			for (int serverId : majorGroup) {
-				threads[serverId].stopSig();
-			}
-		}
-		else {
-			for (int serverId : minorGroup) {
-				threads[serverId].stopSig();
-			}
-		}
-		System.out.println();
-		*/
-
 		// reconstructPartition();
 	}
 
@@ -406,32 +366,41 @@ public class Server {
 			connectedChannels[i] = true;
 		}
 
-		/*
-		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
-		for (int i = 0; i < NUM_SERVERS; i++) {
-
-			if((inMinorGroup && i < MINOR_GROUP_SIZE) || (!inMinorGroup && i>=MINOR_GROUP_SIZE)) continue;
-
-			if (serverID <= i) {
-				threads[i] = new ServerThreadHost(i, i, BASE_PORT + 100 * serverID + i, this);
-			} else if (serverID > i) {
-				threads[i] = new ServerThreadClient(i, i, BASE_PORT + 100 * i + serverID, this, ips[i]);
-			}
-		}
-		*/
-
-		//TODO: synchronize groups
-
 		int missingReplicaId = getMissingReplicaId();
 
 		//no missing replica or it is in minority replica group 
 		if(missingReplicaId < 0)	{
-			System.out.println("No synchronized needed!");
+			System.out.println("No synchronization needed!");
 			return;
 		}
 
 		//send out sync data to missingReplicaId from serverId;
-		//based on the list of messages stored on server
+		//use failedWriteRequests to sync replicas
+		for (String request : failedWriteRequests) {
+			Scanner req = new Scanner(request);
+			int clientID = req.nextInt();
+			int requestType = req.nextInt();
+
+			if(requestType == 1)	continue;	//ignore reads
+
+			Obj object = new Obj(req.next(), "");
+			object.value = req.nextLine(); // set object's value to the requested write value to be written.
+
+			String messageString = "sync writeRequest " + object.toString();
+			Message newSyncMessage = new Message(timestamp, messageString, serverID);
+			boolean syncMessageSent = sendMessage(newSyncMessage, missingReplicaId);
+			System.out.println("Sent request to Server "+ missingReplicaId);
+
+			if (syncMessageSent) {
+				req.close();
+				System.out.println("Object written: " + object);
+				System.out.println("Sync Successfully wrote!");
+			} else {
+				req.close();
+				System.out.println("Sync Write failed!");
+			}
+		}
+
 	}
 
 	public int getMissingReplicaId() {
