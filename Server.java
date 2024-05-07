@@ -21,7 +21,7 @@ public class Server {
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
-	private ServerThread[] threads = new ServerThread[2*NUM_SERVERS];
+	private ServerThread[] threads = new ServerThread[NUM_SERVERS];
 	// Indicates whether a Server can be accessed via Client.
 	private boolean isOpen = true;
 	// You can safely ignore these; this is for synchronization purposes.
