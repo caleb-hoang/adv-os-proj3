@@ -20,6 +20,7 @@ public class Server {
 	private int[] timestamp = new int[NUM_SERVERS];
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
+	private ArrayList<String> failedWriteRequests = new ArrayList<String>();
 	// List of threads connecting to other Servers. The index corresponding to the Server's ID should be null.
 	private ServerThread[] threads = new ServerThread[NUM_SERVERS];
 	// Indicates whether a Server can be accessed via Client.
@@ -189,6 +190,7 @@ public class Server {
 				System.out.println("Object written: " + object);
 				return "Successfully wrote!";
 			} else {
+				failedWriteRequests.add(request);
 				req.close();
 				return "Write failed!";
 			}
