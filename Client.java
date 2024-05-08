@@ -1,6 +1,7 @@
 import java.net.*;
 import java.io.*;
 import java.util.Scanner;
+import java.util.Arrays;
 import java.util.Random;
 // Client that requests to read or write an object upon being
 // Arguments, in order:
@@ -11,7 +12,7 @@ import java.util.Random;
 
 public class Client {
 	public static final Random rand = new Random();
-    public static final int NUM_SERVERS = 5;
+    public static final int NUM_SERVERS = 7;
     public static final int NUM_REPLICAS = 3;
     public static final int BASE_PORT = 7000;
     public static final String IP_FILE_NAME = "ips.txt";
@@ -44,11 +45,13 @@ public class Client {
     }
 
     public static String read(int clientNum, int[] servers, String[] ips, String objectName) throws IOException {
-        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICAS)];
-        int port = BASE_PORT + 100*chosenServerIndex + chosenServerIndex;
+        int chosenServerIndex = rand.nextInt(NUM_REPLICAS);
+        int chosenServer = servers[chosenServerIndex];
+        System.out.println(Arrays.toString(servers));
+        int port = BASE_PORT + 100*chosenServer + chosenServer;
 
-        System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
-		Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
+        System.out.println("Attempting to connect to server " + chosenServer + " on port " + port);
+		Socket server = new Socket(InetAddress.getByName(ips[chosenServer]), port);
 		System.out.println("Just connected to " + server.getRemoteSocketAddress());
 
 		// Create output stream to server and send server the message
@@ -66,15 +69,17 @@ public class Client {
     }
 
     public static String write(int clientNum, int[] servers, String[] ips, Obj object) throws IOException {
-        int chosenServerIndex = servers[rand.nextInt(NUM_REPLICAS)];
+        int chosenServerIndex = rand.nextInt(NUM_REPLICAS);
+        System.out.println(Arrays.toString(servers));
         boolean isSent = false;
         int numTried = 0;
     	// Create output stream to server and send server the message
         while(!isSent && numTried < 3) {
+            int chosenServer = servers[chosenServerIndex];
             numTried ++;
-            int port = BASE_PORT + 100 * chosenServerIndex + chosenServerIndex;
-            System.out.println("Attempting to connect to server " + chosenServerIndex + " on port " + port);
-	        Socket server = new Socket(InetAddress.getByName(ips[chosenServerIndex]), port);
+            int port = BASE_PORT + 100 * chosenServer + chosenServer;
+            System.out.println("Attempting to connect to server " + chosenServer + " on port " + port);
+	        Socket server = new Socket(InetAddress.getByName(ips[chosenServer]), port);
     	    System.out.println("Just connected to " + server.getRemoteSocketAddress());
             OutputStream outToServer = server.getOutputStream();
 	        DataOutputStream out = new DataOutputStream(outToServer);
@@ -89,7 +94,7 @@ public class Client {
                 return("Send to server " + chosenServerIndex + " succeeded");
             }
             server.close();
-            chosenServerIndex = (chosenServerIndex + 2) % NUM_SERVERS;
+            chosenServerIndex = (chosenServerIndex + 1) % NUM_REPLICAS;
         }
          return("Send failed!");
     }
@@ -116,7 +121,7 @@ public class Client {
 
     public static int[] relevantServers(String objectName) {
         int[] objectServers = new int[NUM_REPLICAS];
-        int hashCode = Math.abs(objectName.hashCode());
+        int hashCode = Math.abs(objectName.hashCode()) % NUM_SERVERS;
 
         objectServers[0] = (hashCode) % NUM_SERVERS;
         objectServers[1] = (hashCode + 2) % NUM_SERVERS;

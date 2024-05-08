@@ -3,7 +3,7 @@ import java.io.*;
 // Creates and manages threads to manage the collection of Client ip addresses. 
 public class Coordinator {
 	//default IP = 10.176.69.41 //dc10
-	public static final int NUM_SERVERS = 5;	// -> 7
+	public static final int NUM_SERVERS = 7;	// -> 7
 	public static final int NUM_CLIENTS = 1;	// -> 5
 	public static final int COORDINATOR_BASE_PORT = 8000;
 	public static final String IP_FILE_NAME = "ips.txt";

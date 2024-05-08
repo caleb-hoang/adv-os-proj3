@@ -59,6 +59,8 @@ public abstract class ServerThread extends Thread {
 					System.out.println("Message " + nextMessage + " received from server " + partner);
 					Message message = Message.fromString(nextMessage);
 					server.receiveMessage(message);
+					timestamp ++;
+					server.timestamp[num] ++;
 				} else {
 					System.out.println("Message " + nextMessage + " blocked from server " + partner);
 					out.writeUTF("Failed");
@@ -87,6 +89,7 @@ public abstract class ServerThread extends Thread {
 	private boolean verifyTimestamp(int[] messageTimestamp) {
 		if(messageTimestamp[num] == timestamp) { // timestamp is accurate and the message can be delivered
 			timestamp ++;
+			server.timestamp[num] ++;
 			return true;
 		} else {
 			return false;

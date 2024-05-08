@@ -3,7 +3,7 @@ import java.util.Scanner;
 
 public class Message {
 
-    public static int NUM_SERVERS = 5; // ->7
+    public static int NUM_SERVERS = 7; // ->7
     public int[] timestamp;
     public String text;
     public int sender;

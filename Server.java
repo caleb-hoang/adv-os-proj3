@@ -7,7 +7,7 @@ import java.util.*;
 
 // args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
 public class Server {
-	public final int NUM_SERVERS = 5; // -> 7
+	public final int NUM_SERVERS = 7; // -> 7
     public final int NUM_REPLICAS = 3;
     public final int BASE_PORT = 7000;
 	public final int COORDINATOR_BASE_PORT = 8000;
@@ -21,7 +21,7 @@ public class Server {
 	private boolean[] connectedChannels = new boolean[NUM_SERVERS];
 	// Each of the objects stored in the repository.
 	private ArrayList<Obj> objects = new ArrayList<Obj>();
-	private int[] timestamp = new int[NUM_SERVERS];
+	public int[] timestamp = new int[NUM_SERVERS];
 	// Buffer for undelivered messages.
 	private ArrayList<Message> buffer = new ArrayList<Message>();
 	private ArrayList<String> failedWriteRequests = new ArrayList<String>();
@@ -205,7 +205,6 @@ public class Server {
 				System.out.println("Object written: " + object);
 				return "Successfully wrote!";
 			} else {
-				failedWriteRequests.add(request);
 				req.close();
 				return "Write failed!";
 			}
@@ -229,7 +228,7 @@ public class Server {
 				objects.get(objects.indexOf(newObject)).value = newObject.value;
 				return true;
 			} else {
-				failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
+				//failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
 				return false;
 			}
 		} else {
@@ -240,7 +239,7 @@ public class Server {
 				return true;
 			} else {
 				objects.remove(newObject);
-				failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
+				//failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
 				return false;
 			}
 		}
@@ -248,8 +247,19 @@ public class Server {
 
 	public synchronized boolean broadcastWrite(Obj object) {
 		System.out.println("attempting to broadcast write!");
-		int serverOne = (serverID + 2) % NUM_SERVERS;
-		int serverTwo = (serverID + 4) % NUM_SERVERS; 
+		int hashCode = Math.abs(object.name.hashCode()) % NUM_SERVERS;
+		int serverOne;
+		int serverTwo;
+		if(hashCode == serverID) {
+			serverOne = (hashCode + 2) % NUM_SERVERS;
+			serverTwo = (hashCode + 4) % NUM_SERVERS;
+		} else if (hashCode == (serverID + 2) % NUM_SERVERS) {
+			serverOne = hashCode;
+			serverTwo = (hashCode + 4) % NUM_SERVERS;
+		} else {
+			serverOne = hashCode;
+			serverTwo = (hashCode + 2) % NUM_SERVERS;
+		}
 		System.out.println(objects.contains(object));
 		String messageString = "writeRequest " + object.toString();
 		Message newMessage = new Message(timestamp, messageString, serverID);
@@ -261,7 +271,6 @@ public class Server {
 		} else {
 			// add to failed write requests
 			System.out.println("Write failed to Server " + serverOne);
-			failedWriteRequests.add(-1 + " " + 0 + " " + object.name + " " + object.value);
 		}
 		if(connectedChannels[serverTwo]) {
 			sendMessage(newMessage, serverTwo);
@@ -276,6 +285,9 @@ public class Server {
 			// write fails automatically
 			System.out.println("Write failed!");
 			return false;
+		} else {
+			if (!connectedChannels[serverOne]) failedWriteRequests.add(serverOne + " " + -1 + " " + 0 + " " + object.name + " " + object.value);
+			if (!connectedChannels[serverTwo]) failedWriteRequests.add(serverTwo + " " + -1 + " " + 0 + " " + object.name + " " + object.value);
 		}
 		System.out.println("num needed: " + numNeeded);
 		while (objects.get(objects.indexOf(object)).approved < numNeeded) {
@@ -404,16 +416,17 @@ public class Server {
 		int missingReplicaId = getMissingReplicaId();
 
 		//no missing replica or it is in minority replica group 
-		if(missingReplicaId < 0)	{
-			System.out.println("No synchronization needed!");
-			return;
-		}
+		// if(missingReplicaId < 0)	{
+		// 	System.out.println("No synchronization needed!");
+		//	return;
+		//}
 
 		//send out sync data to missingReplicaId from serverId;
 		//use failedWriteRequests to sync replicas
 		for (String request : failedWriteRequests) {
 			System.out.println("Resending request " + request);
 			Scanner req = new Scanner(request);
+			int recipient = req.nextInt();
 			int clientID = req.nextInt();
 			int requestType = req.nextInt();
 
@@ -424,8 +437,8 @@ public class Server {
 
 			String messageString = "syncRequest " + object.toString();
 			Message newSyncMessage = new Message(timestamp, messageString, serverID);
-			boolean syncMessageSent = sendMessage(newSyncMessage, missingReplicaId);
-			System.out.println("Sent request to Server "+ missingReplicaId);
+			boolean syncMessageSent = sendMessage(newSyncMessage, recipient);
+			System.out.println("Sent request to Server "+ recipient);
 
 			if (syncMessageSent) {
 				req.close();
