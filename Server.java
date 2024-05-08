@@ -7,7 +7,7 @@ import java.util.*;
 
 // args[0] should be the IP of the Coordinator, and args[1] should be the index of the server (0-6).
 public class Server {
-	public final int NUM_SERVERS = 7; // -> 7
+	public final int NUM_SERVERS = 7;
     public final int NUM_REPLICAS = 3;
     public final int BASE_PORT = 7000;
 	public final int COORDINATOR_BASE_PORT = 8000;
@@ -397,8 +397,6 @@ public class Server {
 
 			connectedChannels[i] = false;
 		}
-
-		// reconstructPartition();
 	}
 
 	public synchronized void closePartition() {

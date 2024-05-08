@@ -3,16 +3,10 @@ import java.util.Scanner;
 
 public class Message {
 
-    public static int NUM_SERVERS = 7; // ->7
+    public static int NUM_SERVERS = 7;
     public int[] timestamp;
     public String text;
     public int sender;
-    public static void main(String[] args) {
-        int[] messages = {1, 2, 3, 4, 5};
-        Message newMessage = new Message(messages, "text", 0);
-        String s = newMessage.toString();
-        System.out.println(s);
-    }
 
     public Message(int[] timestamp, String message, int serverID) {
         this.timestamp = timestamp;
