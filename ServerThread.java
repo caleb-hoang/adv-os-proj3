@@ -64,7 +64,8 @@ public abstract class ServerThread extends Thread {
 					out.writeUTF("Failed");
 				}
 			} catch (IOException e) {
-				// e.printStackTrace();
+				System.out.println("Connection lost from server " + partner);
+				break;
 			}
 		}
 	}

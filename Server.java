@@ -45,6 +45,9 @@ public class Server {
 	}
 
 	public Server(String[] args) {
+		for(int i = 0; i < connectedChannels.length; i++) {
+			connectedChannels[i] = true;
+		}
 		serverID = Integer.parseInt(args[1]);
 		System.out.println("Server " + serverID + " started.");
 		int port = COORDINATOR_BASE_PORT + serverID;
@@ -126,6 +129,12 @@ public class Server {
 						System.out.println("Turning on client input!");
 					}
 					isOpen = !isOpen;
+				} else if (nextInput.equals("createPartition")){
+					createPartition();
+				} else if (nextInput.equals("closePartition")){
+					closePartition();
+				} else if (nextInput.equals("reconstructPartition")){
+					reconstructPartition();
 				} else {
 					int input = Integer.parseInt(nextInput);
 					if (input < 0 || input >= NUM_SERVERS) {
@@ -220,6 +229,7 @@ public class Server {
 				objects.get(objects.indexOf(newObject)).value = newObject.value;
 				return true;
 			} else {
+				failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
 				return false;
 			}
 		} else {
@@ -230,6 +240,7 @@ public class Server {
 				return true;
 			} else {
 				objects.remove(newObject);
+				failedWriteRequests.add(source + " " + 0 + " " + newObject.name + " " + newObject.value);
 				return false;
 			}
 		}
@@ -242,20 +253,29 @@ public class Server {
 		System.out.println(objects.contains(object));
 		String messageString = "writeRequest " + object.toString();
 		Message newMessage = new Message(timestamp, messageString, serverID);
-		boolean first = sendMessage(newMessage, serverOne);
-		System.out.println("Sent request to Server "+ serverOne);
-		boolean second = sendMessage(newMessage, serverTwo);
-		System.out.println("Sent request to Server "+ serverTwo);
-		if(!first && !second) {
+		int numNeeded = 0;
+		if(connectedChannels[serverOne]) {
+			System.out.println("Sent request to Server "+ serverOne);
+			sendMessage(newMessage, serverOne);
+			numNeeded ++;
+		} else {
+			// add to failed write requests
+			System.out.println("Write failed to Server " + serverOne);
+			failedWriteRequests.add(-1 + " " + 0 + " " + object.name + " " + object.value);
+		}
+		if(connectedChannels[serverTwo]) {
+			sendMessage(newMessage, serverTwo);
+			System.out.println("Sent request to Server "+ serverTwo);
+			numNeeded ++;
+		} else {
+			// add to failed write requests
+			System.out.println("Write failed to Server " + serverTwo);
+
+		}
+		if(numNeeded == 0) {
 			// write fails automatically
 			System.out.println("Write failed!");
 			return false;
-		}
-		int numNeeded = 0;
-		if (first && second) {
-			numNeeded = 2;
-		} else {
-			numNeeded = 1;
 		}
 		System.out.println("num needed: " + numNeeded);
 		while (objects.get(objects.indexOf(object)).approved < numNeeded) {
@@ -264,8 +284,8 @@ public class Server {
 		System.out.println("All approved!");
 		String approvedMessageString = "writeFinalize " + object.toString();
 		Message approvedNewMessage = new Message(timestamp, approvedMessageString, serverID);
-		if(first) sendMessage(approvedNewMessage, serverOne);
-		if(second) sendMessage(approvedNewMessage, serverTwo);
+		if(connectedChannels[serverOne]) sendMessage(approvedNewMessage, serverOne);
+		if(connectedChannels[serverTwo]) sendMessage(approvedNewMessage, serverTwo);
 		return true;
 	}
 
@@ -292,6 +312,15 @@ public class Server {
 		System.out.println("Object written from other Server: " + object);
 	}
 
+	public void processSyncRequest(String messageContent) {
+		Obj object = Obj.fromString(messageContent);
+		if (objects.contains(object)) {
+			objects.remove(object);	
+		}
+		objects.add(object);
+		System.out.println("Object synced from other Server: " + object);
+	}
+
 	public boolean isChannelClosed(int channel) {
 		return !connectedChannels[channel];
 	}
@@ -313,6 +342,7 @@ public class Server {
 		connectedChannels[connectedServerID] = true;
 	}
 
+
 	// Gets a new message from thread and either adds it to the buffer or marks it as delivered.
 	public void receiveMessage(Message message) { 
 		System.out.println("New message: " + message.toString());
@@ -329,6 +359,8 @@ public class Server {
 			// processWriteDeny(messageContent);
 		} else if (messageType.equals("writeFinalize")) {
 			processWriteFinalize(messageContent);
+		} else if (messageType.equals("syncRequest")) {
+			processSyncRequest(messageContent);
 		}
 	}
 	// Populates the ips array using the list of addresses received from the coordinator.
@@ -346,7 +378,7 @@ public class Server {
 	}
 
 	public synchronized void createPartition() {
-
+		System.out.println(getMissingReplicaId());
 		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
 		for (int i = 0; i < NUM_SERVERS; i++) {
 			if((inMinorGroup && i < MINOR_GROUP_SIZE) || (!inMinorGroup && i>=MINOR_GROUP_SIZE)) continue;
@@ -357,7 +389,7 @@ public class Server {
 		// reconstructPartition();
 	}
 
-	public synchronized void reconstructPartition() {
+	public synchronized void closePartition() {
 		//connect back connections
 		boolean inMinorGroup = serverID < MINOR_GROUP_SIZE ? true : false;
 		for (int i = 0; i < NUM_SERVERS; i++) {
@@ -365,6 +397,9 @@ public class Server {
 
 			connectedChannels[i] = true;
 		}
+	}
+
+	public synchronized void reconstructPartition() {
 
 		int missingReplicaId = getMissingReplicaId();
 
@@ -377,6 +412,7 @@ public class Server {
 		//send out sync data to missingReplicaId from serverId;
 		//use failedWriteRequests to sync replicas
 		for (String request : failedWriteRequests) {
+			System.out.println("Resending request " + request);
 			Scanner req = new Scanner(request);
 			int clientID = req.nextInt();
 			int requestType = req.nextInt();
@@ -386,7 +422,7 @@ public class Server {
 			Obj object = new Obj(req.next(), "");
 			object.value = req.nextLine(); // set object's value to the requested write value to be written.
 
-			String messageString = "sync writeRequest " + object.toString();
+			String messageString = "syncRequest " + object.toString();
 			Message newSyncMessage = new Message(timestamp, messageString, serverID);
 			boolean syncMessageSent = sendMessage(newSyncMessage, missingReplicaId);
 			System.out.println("Sent request to Server "+ missingReplicaId);
